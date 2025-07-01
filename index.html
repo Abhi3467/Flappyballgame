@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flappy Ball Game with Difficulty Levels</title>
+  <style>
+    body { margin: 0; background: #70c5ce; font-family: Arial, sans-serif; }
+    #gameCanvas { display: block; margin: 20px auto; border: 2px solid black; background-color: #70c5ce; }
+    #overlay {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; color: #fff;
+    }
+    .btn {
+      background: #fff; color: #333; border: none; padding: 10px 20px;
+      margin: 5px; font-size: 16px; cursor: pointer; border-radius: 5px;
+    }
+    .btn:hover { background: #eee; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="320" height="480"></canvas>
+  <div id="overlay">
+    <h1 id="overlayTitle">Choose Difficulty</h1>
+    <div id="levelButtons">
+      <button class="btn" onclick="startGame('easy')">Easy</button>
+      <button class="btn" onclick="startGame('medium')">Medium</button>
+      <button class="btn" onclick="startGame('hard')">Hard</button>
+    </div>
+    <div id="gameOver" style="display:none; margin-top:20px; text-align:center;">
+      <h2 id="finalScore"></h2>
+      <button class="btn" onclick="restartGame()">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+    const levelButtons = document.getElementById("levelButtons");
+    const gameOverDiv = document.getElementById("gameOver");
+    const finalScoreText = document.getElementById("finalScore");
+    const overlayTitle = document.getElementById("overlayTitle");
+
+    // Load ball image
+    const ballImg = new Image();
+    let ballImageLoaded = false;
+    ballImg.onload = function() {
+      ballImageLoaded = true;
+    };
+    ballImg.src = 'ball.png';
+
+    let gap = 120, pipeSpeed = 1.5;
+    let ball = {}, pipes = [], score = 0;
+    let frames = 0, gameRunning = false;
+    let lastLevel = null;
+
+    document.addEventListener("keydown", () => flap());
+    document.addEventListener("touchstart", () => flap());
+
+    function startGame(level) {
+      lastLevel = level;
+      if (level === 'easy') { gap = 160; pipeSpeed = 1; }
+      if (level === 'medium') { gap = 120; pipeSpeed = 1.5; }
+      if (level === 'hard') { gap = 100; pipeSpeed = 2; }
+
+      overlay.style.display = 'none';
+      resetState();
+      gameRunning = true;
+      draw();
+    }
+
+    function resetState() {
+      ball = { x: 50, y: 150, radius: 12, gravity: 0.6, velocity: 0 };
+      pipes = [{ x: canvas.width, y: -150 }];
+      score = 0;
+      frames = 0;
+      gameOverDiv.style.display = 'none';
+      levelButtons.style.display = 'none';
+      overlayTitle.textContent = '';
+    }
+
+    function flap() {
+      if (!gameRunning) return;
+      ball.velocity = -10;
+    }
+
+    function draw() {
+      if (!gameRunning) return;
+      frames++;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw pipes
+      for (let i = 0; i < pipes.length; i++) {
+        const p = pipes[i];
+        const constant = 320 + gap;
+        ctx.fillStyle = '#228B22';
+        ctx.fillRect(p.x, p.y, 52, 320);
+        ctx.fillRect(p.x, p.y + constant, 52, 320);
+        p.x -= pipeSpeed;
+
+        if (p.x === 125) {
+          pipes.push({ x: canvas.width, y: Math.floor(Math.random() * 320) - 320 });
+        }
+
+        if (ball.x + ball.radius*2 > p.x && ball.x < p.x + 52 &&
+            (ball.y - ball.radius < p.y + 320 || ball.y + ball.radius > p.y + constant)) {
+          endGame(); return;
+        }
+
+        if (p.x === 5) score++;
+      }
+
+      // Draw ball image safely
+      if (ballImageLoaded) {
+        ctx.drawImage(ballImg, ball.x - ball.radius, ball.y - ball.radius, ball.radius*2, ball.radius*2);
+      } else {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#FFD700'; ctx.fill(); ctx.stroke();
+      }
+
+      ball.velocity += ball.gravity;
+      ball.y += ball.velocity;
+
+      if (ball.y + ball.radius > canvas.height) { endGame(); return; }
+
+      ctx.fillStyle = '#000'; ctx.font = '20px Arial';
+      ctx.fillText('Score: ' + score, 10, canvas.height - 20);
+
+      requestAnimationFrame(draw);
+    }
+
+    function endGame() {
+      gameRunning = false;
+      finalScoreText.textContent = 'Game Over! Your Score: ' + score;
+      gameOverDiv.style.display = 'block';
+      overlay.style.display = 'flex';
+    }
+
+    function restartGame() {
+      gameOverDiv.style.display = 'none';
+      overlay.style.display = 'none';
+      startGame(lastLevel);
+    }
+  </script>
+</body>
+</html>
